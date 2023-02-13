@@ -3,20 +3,14 @@ const bodyParser = require('body-parser');
 
 const app = express();
 app.use(bodyParser.urlencoded({ extended: false }))
+app.set('view engine', 'ejs');
 
 const PORT = 3000;
 
 app.get('/', (req, res) => {
 
-    const today = new Date().getDay;
-    const weekendDays = [0, 6]
-
-    if(weekendDays.includes(today)) {
-        res.write("It is the weekend.")
-    } else {
-        res.write("It is a weekday.")
-    }
-    res.send();
+    const today = new Date().toLocaleString('en-us', {  weekday: 'long' });
+    res.render('index', {day: today});
 })
 
 
