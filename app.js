@@ -15,7 +15,7 @@ const database = "todoListDB";
 mongoose.set("strictQuery", false);
 mongoose.connect(`${mongoDbUri}/${database}`);
 
-// Collection
+// Collections
 const todoSchema = mongoose.Schema({
     name: {
         type: String,
@@ -37,8 +37,18 @@ const item3 = new Todo({
 
 const defaultItems = [item1, item2, item3];
 
-// TODO remove
-let workTodoList = [];
+// Flexible TodoLists
+const listSchema = mongoose.Schema({
+    name: {
+        type: String,
+        required: true,
+    },
+    todos: [
+        todoSchema
+    ]
+});
+const List = new mongoose.model("List", listSchema);
+
 
 // Routes
 // Get main todo list
@@ -49,29 +59,51 @@ app.get('/', async (req, res) => {
         Todo.insertMany(defaultItems);
     }
     res.render('index', { pageTitle: today, todoItems: allTodos, buttonValue: today });
-})
+});
 
-// Get work todo list
-app.get("/work", (req, res) => {
-    const workTitle = "Work"
-    res.render('index', {pageTitle: workTitle, todoItems: workTodoList, buttonValue: workTitle});
-})
+// Get custom todo list
+app.get('/:customListName', async (req, res) => {
+    const name = req.params.customListName;
+    const currentList = await List.findOne({name: name});
+    if(!currentList) {
+        // Create a new List
+        const list = new List({
+            name: name,
+            todos: defaultItems,
+        })
+        list.save();
+        res.redirect(`/${name}`);
+    } else {
+        // Show an existing list
+        res.render('index', { pageTitle: currentList.name, todoItems: currentList.todos, buttonValue: currentList.name });
+    }
+
+});
 
 // About this app
 app.get("/about", (req, res) => {
     res.render('about');
 })
 
-// Post to either of the todo lists
+// Post to todo list
 app.post('/', (req, res) => {
-    const newTodoItem = req.body.newTodo;
-    if(req.body.button === "Work") {
-        workTodoList.push(newTodoItem);
-        res.redirect('/work');
-    } else {
-        personalTodoList.push(newTodoItem);
-        res.redirect('/');
-    }
+    const newTodoName = req.body.newTodo;
+    const newTodo = Todo({
+        name: newTodoName,
+    })
+
+    newTodo.save();
+
+
+    res.redirect('/');
+});
+
+// Delete todos
+app.post('/delete', async (req, res) => {
+    const checkedTodoId = req.body.checkbox;
+    await Todo.findByIdAndRemove(checkedTodoId);
+
+    res.redirect('/');
 })
 
 // Listener
