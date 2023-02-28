@@ -1,6 +1,7 @@
 const express = require('express');
 const bodyParser = require('body-parser');
 const mongoose = require('mongoose');
+const _ = require("lodash");
 require('dotenv').config();
 
 const app = express();
@@ -61,7 +62,7 @@ app.get('/', async (req, res) => {
 
 // Get custom todo list
 app.get('/:customListName', async (req, res) => {
-    const name = req.params.customListName;
+    const name = _.capitalize(req.params.customListName);
     const currentList = await List.findOne({name: name});
     if(!currentList) {
         // Create a new List
