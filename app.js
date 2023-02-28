@@ -1,7 +1,6 @@
 const express = require('express');
 const bodyParser = require('body-parser');
 const mongoose = require('mongoose');
-const date = require(__dirname + '/date.js');
 require('dotenv').config();
 
 const app = express();
@@ -53,12 +52,11 @@ const List = new mongoose.model("List", listSchema);
 // Routes
 // Get main todo list
 app.get('/', async (req, res) => {
-    const today = date.getDate();
     const allTodos = await Todo.find({});
     if(allTodos.length === 0) {
         Todo.insertMany(defaultItems);
     }
-    res.render('index', { pageTitle: today, todoItems: allTodos, buttonValue: today });
+    res.render('index', { listTitle: "Today", todoItems: allTodos});
 });
 
 // Get custom todo list
@@ -75,35 +73,48 @@ app.get('/:customListName', async (req, res) => {
         res.redirect(`/${name}`);
     } else {
         // Show an existing list
-        res.render('index', { pageTitle: currentList.name, todoItems: currentList.todos, buttonValue: currentList.name });
+        res.render('index', { listTitle: currentList.name, todoItems: currentList.todos});
     }
 
 });
 
 // About this app
-app.get("/about", (req, res) => {
+app.get("/about",  (req, res) => {
     res.render('about');
 })
 
 // Post to todo list
-app.post('/', (req, res) => {
+app.post('/', async (req, res) => {
+    const listName = req.body.button;
     const newTodoName = req.body.newTodo;
     const newTodo = Todo({
         name: newTodoName,
-    })
+    });
 
-    newTodo.save();
+    if(listName === "Today") {
+        newTodo.save();
+        res.redirect('/');
+    } else {
+        const listCollection = await List.findOne({name: listName});
+        listCollection.todos.push(newTodo);
+        listCollection.save();
+        res.redirect(`/${listName}`);
+    }
 
-
-    res.redirect('/');
 });
 
 // Delete todos
 app.post('/delete', async (req, res) => {
+    const listName = req.body.listName;
     const checkedTodoId = req.body.checkbox;
-    await Todo.findByIdAndRemove(checkedTodoId);
 
-    res.redirect('/');
+    if(listName === "Today") {
+        await Todo.findByIdAndRemove(checkedTodoId);
+        res.redirect('/');
+    } else {
+        await List.findOneAndUpdate({name: listName}, {$pull: {todos: {_id: checkedTodoId}}});
+        res.redirect(`/${listName}`);
+    }
 })
 
 // Listener
